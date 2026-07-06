@@ -1,0 +1,81 @@
+# costra
+
+Run multiple **Claude Code** and **Codex** accounts side by side, each behind its own [pxpipe](https://www.npmjs.com/package/pxpipe-proxy) proxy to save costs — with automatic port allocation and isolated config directories.
+
+## Install
+
+```sh
+npm install -g costra
+```
+
+Requires Node 20+ and the CLI you want to run (`claude` and/or `codex`) on your `PATH`.
+
+## Quick start
+
+```sh
+# Register accounts (stored in ~/.costra.json)
+costra add work --provider anthropic --model claude-fable-5
+costra add personal --provider anthropic
+costra add oai --provider openai
+
+# Launch — starts a pxpipe proxy in the background if needed, then the CLI
+costra work
+costra oai
+
+# Pass extra arguments to the underlying CLI after --
+costra work -- --resume
+```
+
+## How it works
+
+For each account, costra:
+
+1. Assigns a **stable port** from a configurable range (default `47800–47899`), persisted in the account's config directory, skipping ports assigned to other accounts.
+2. Ensures a **pxpipe proxy** is listening on that port (spawned detached, logs to `pxpipe.log` in the account's config dir).
+3. Launches the provider's CLI with the right environment:
+
+| Provider    | CLI      | Base URL env         | Config dir env      | Default config dir        |
+| ----------- | -------- | -------------------- | ------------------- | ------------------------- |
+| `anthropic` | `claude` | `ANTHROPIC_BASE_URL` | `CLAUDE_CONFIG_DIR` | `~/.config-claude-<name>` |
+| `openai`    | `codex`  | `OPENAI_BASE_URL`    | `CODEX_HOME`        | `~/.config-codex-<name>`  |
+
+Because each account gets its own config directory, logins never collide — run as many accounts simultaneously as you like.
+
+## Commands
+
+```
+costra <account> [-- <cli args...>]   Start proxy (if needed) and launch the CLI
+costra add <account> [options]        Register an account
+costra remove <account>               Unregister an account (config dir is kept)
+costra list                           List configured accounts
+costra status                         Show ports and proxy state per account
+costra stop <account>                 Stop the account's background proxy
+costra proxy <account>                Run the proxy in the foreground (debugging)
+```
+
+### `add` options
+
+| Option                | Description                                        |
+| --------------------- | -------------------------------------------------- |
+| `--provider <p>`      | `anthropic` (default) or `openai`                  |
+| `--model <m>`         | Passed to the CLI as `--model <m>`                 |
+| `--cli <binary>`      | Override the CLI binary                            |
+| `--config-dir <path>` | Override the account's config directory            |
+
+## Configuration
+
+`~/.costra.json` (override the location with the `COSTRA_CONFIG` env var):
+
+```json
+{
+  "portRange": [47800, 47899],
+  "accounts": {
+    "work": { "provider": "anthropic", "model": "claude-fable-5" },
+    "oai": { "provider": "openai" }
+  }
+}
+```
+
+## License
+
+MIT

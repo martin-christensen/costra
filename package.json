@@ -1,0 +1,41 @@
+{
+  "name": "costra",
+  "version": "0.1.0",
+  "description": "Run multiple Claude Code and Codex CLI accounts side by side, each behind its own pxpipe proxy, with automatic port allocation.",
+  "type": "module",
+  "bin": {
+    "costra": "bin/costra.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "codex",
+    "openai",
+    "anthropic",
+    "pxpipe",
+    "proxy",
+    "multi-account",
+    "cli"
+  ],
+  "author": "Martin Christensen <martin@diwe.dk>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/martin-christensen/costra.git"
+  },
+  "bugs": {
+    "url": "https://github.com/martin-christensen/costra/issues"
+  },
+  "homepage": "https://github.com/martin-christensen/costra#readme"
+}
