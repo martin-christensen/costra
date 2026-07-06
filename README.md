@@ -60,7 +60,24 @@ costra status                         Show ports and proxy state per account
 costra stop <account>                 Stop the account's background proxy
 costra proxy <account>                Run the proxy in the foreground (debugging)
 costra proxy open <account>           Open the account's pxpipe URL in the browser
+costra version                        Show version and check npm for a newer one
 ```
+
+`costra --version` / `-v` prints the bare version with no network access (script-friendly).
+
+### Update checks
+
+Costra checks npm for a newer version at most once a day. The check runs in a
+detached background process, so commands are never delayed — when an update is
+found, a one-line notice is printed to stderr on the next run:
+
+```
+costra: update available 1.0.0 → 1.1.0 — run: npm install -g @martin-christensen/costra
+```
+
+The result is cached in `~/.costra-update.json` (override with the
+`COSTRA_UPDATE_CACHE` env var). Set `COSTRA_NO_UPDATE_CHECK=1` to disable
+update checks entirely.
 
 ### Launch options
 
