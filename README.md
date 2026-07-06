@@ -1,6 +1,6 @@
 # costra
 
-> Run multiple **Claude Code** and **Codex** accounts side by side — each behind its own [pxpipe](https://www.npmjs.com/package/pxpipe-proxy) proxy to save costs, with automatic port allocation and isolated config directories.
+> Run multiple **Claude Code** and **Codex** accounts side by side — each behind its own [pxpipe](https://github.com/teamchong/pxpipe) proxy to save costs, with automatic port allocation and isolated config directories.
 
 [![npm version](https://img.shields.io/npm/v/@martin-christensen/costra)](https://www.npmjs.com/package/@martin-christensen/costra)
 [![npm downloads](https://img.shields.io/npm/dm/@martin-christensen/costra)](https://www.npmjs.com/package/@martin-christensen/costra)
