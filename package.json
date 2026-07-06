@@ -1,6 +1,6 @@
 {
   "name": "@martin-christensen/costra",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Run multiple Claude Code and Codex CLI accounts side by side, each behind its own pxpipe proxy, with automatic port allocation.",
   "type": "module",
   "bin": {
