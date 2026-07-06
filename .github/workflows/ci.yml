@@ -4,25 +4,6 @@ on:
   pull_request:
 
 jobs:
-  version-check:
-    name: version not already published
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Fail if package.json version already exists on npm
-        run: |
-          PKG_NAME=$(node -p "require('./package.json').name")
-          PKG_VERSION=$(node -p "require('./package.json').version")
-          PUBLISHED=$(npm view "$PKG_NAME@$PKG_VERSION" version 2>/dev/null || true)
-          if [ "$PUBLISHED" = "$PKG_VERSION" ]; then
-            echo "::error::$PKG_NAME@$PKG_VERSION is already on npm. Bump the version in package.json so this merge triggers a release."
-            exit 1
-          fi
-          echo "$PKG_NAME@$PKG_VERSION is not published yet - merging will release it."
-
   test:
     runs-on: ubuntu-latest
     strategy:

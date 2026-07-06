@@ -5,16 +5,32 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
-  id-token: write # npm provenance
+  contents: write
+  pull-requests: write
 
 concurrency:
   group: release
   cancel-in-progress: false
 
 jobs:
-  release:
+  release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+
+  publish:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm provenance
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,15 +38,7 @@ jobs:
           node-version: 22
           registry-url: 'https://registry.npmjs.org'
       - run: npm test
-      - name: Publish to npm (if version is new)
+      - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          PKG_NAME=$(node -p "require('./package.json').name")
-          PKG_VERSION=$(node -p "require('./package.json').version")
-          PUBLISHED=$(npm view "$PKG_NAME@$PKG_VERSION" version 2>/dev/null || true)
-          if [ "$PUBLISHED" = "$PKG_VERSION" ]; then
-            echo "$PKG_NAME@$PKG_VERSION already on npm - skipping publish."
-          else
-            npm publish --provenance --access public
-          fi
+        run: npm publish --provenance --access public
