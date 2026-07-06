@@ -12,18 +12,24 @@ import { PROVIDERS, getProvider } from "./providers.js";
 import { allocatePort, readAssignedPort, isPortInUse } from "./ports.js";
 import { ensureProxy, stopProxy, proxyEnv } from "./proxy.js";
 import { launchCli } from "./launch.js";
+import { openInBrowser } from "./browser.js";
 
 const HELP = `costra — run multiple Claude Code / Codex accounts behind pxpipe proxies
 
 Usage:
-  costra <account> [-- <cli args...>]   Start proxy (if needed) and launch the CLI
+  costra <account> [--no-proxy] [-- <cli args...>]
+                                        Start proxy (if needed) and launch the CLI
   costra add <account> [options]        Register an account in ${CONFIG_PATH}
   costra remove <account>               Unregister an account (config dir is kept)
   costra list                           List configured accounts
   costra status                         Show ports and proxy state per account
   costra stop <account>                 Stop the account's background proxy
   costra proxy <account>                Run the account's proxy in the foreground
+  costra proxy open <account>           Open the account's pxpipe URL in the browser
   costra help                           Show this help
+
+Options for launching an account:
+  --no-proxy                      Launch the CLI directly, without a pxpipe proxy
 
 Options for "add":
   --provider <anthropic|openai>   Provider preset (default: anthropic)
@@ -164,15 +170,42 @@ async function cmdProxy(args) {
 }
 
 async function cmdRun(name, rest) {
-  const extraArgs = rest[0] === "--" ? rest.slice(1) : rest;
+  let args = rest;
+  let proxy = true;
+  if (args[0] === "--no-proxy") {
+    proxy = false;
+    args = args.slice(1);
+  }
+  const extraArgs = args[0] === "--" ? args.slice(1) : args;
+  const cfg = loadConfig();
+  const account = resolveAccount(cfg, name);
+  if (!proxy) {
+    console.log(`Launching "${name}" without a pxpipe proxy`);
+    launchCli(account, null, extraArgs);
+    return;
+  }
+  const port = await allocatePort(cfg, account);
+  const { started } = await ensureProxy(account, port);
+  const url = `http://127.0.0.1:${port}`;
+  console.log(
+    `${started ? "Started" : "Reusing"} pxpipe proxy for "${name}" at ${url}`
+  );
+  launchCli(account, port, extraArgs);
+}
+
+async function cmdProxyOpen(args) {
+  const name = args[0];
+  if (!name) throw new Error("Usage: costra proxy open <account>");
   const cfg = loadConfig();
   const account = resolveAccount(cfg, name);
   const port = await allocatePort(cfg, account);
   const { started } = await ensureProxy(account, port);
+  const url = `http://127.0.0.1:${port}`;
   if (started) {
     console.log(`Started pxpipe proxy for "${name}" on port ${port}`);
   }
-  launchCli(account, port, extraArgs);
+  console.log(`Opening ${url}`);
+  openInBrowser(url);
 }
 
 export async function main(argv) {
@@ -199,7 +232,9 @@ export async function main(argv) {
     case "stop":
       return cmdStop(rest);
     case "proxy":
-      return cmdProxy(rest);
+      return rest[0] === "open"
+        ? cmdProxyOpen(rest.slice(1))
+        : cmdProxy(rest);
     default:
       return cmdRun(cmd, rest);
   }

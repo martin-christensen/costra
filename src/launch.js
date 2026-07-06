@@ -2,13 +2,16 @@ import { spawn } from "node:child_process";
 
 /**
  * Launch the account's CLI (claude, codex, ...) wired to the local proxy.
+ * Pass a null port to launch without a proxy (no base URL override).
  * Inherits stdio and mirrors the child's exit code.
  */
 export function launchCli(account, port, extraArgs = []) {
   const env = {
     ...process.env,
     [account.configDirEnv]: account.configDir,
-    [account.baseUrlEnv]: `http://127.0.0.1:${port}`,
+    ...(port !== null
+      ? { [account.baseUrlEnv]: `http://127.0.0.1:${port}` }
+      : {}),
   };
   const args = [
     ...(account.model ? ["--model", account.model] : []),

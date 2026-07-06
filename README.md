@@ -18,9 +18,16 @@ costra add work --provider anthropic --model claude-fable-5
 costra add personal --provider anthropic
 costra add oai --provider openai
 
-# Launch — starts a pxpipe proxy in the background if needed, then the CLI
+# Launch — starts a pxpipe proxy in the background if needed (printing its
+# URL), then launches the CLI
 costra work
 costra oai
+
+# Open an account's pxpipe URL in the default browser
+costra proxy open work
+
+# Skip the pxpipe proxy entirely
+costra work --no-proxy
 
 # Pass extra arguments to the underlying CLI after --
 costra work -- --resume
@@ -31,7 +38,7 @@ costra work -- --resume
 For each account, costra:
 
 1. Assigns a **stable port** from a configurable range (default `47800–47899`), persisted in the account's config directory, skipping ports assigned to other accounts.
-2. Ensures a **pxpipe proxy** is listening on that port (spawned detached, logs to `pxpipe.log` in the account's config dir).
+2. Ensures a **pxpipe proxy** is listening on that port (spawned detached, logs to `pxpipe.log` in the account's config dir) and prints its URL — open it in your browser any time with `costra proxy open <account>`.
 3. Launches the provider's CLI with the right environment:
 
 | Provider    | CLI      | Base URL env         | Config dir env      | Default config dir        |
@@ -44,14 +51,22 @@ Because each account gets its own config directory, logins never collide — run
 ## Commands
 
 ```
-costra <account> [-- <cli args...>]   Start proxy (if needed) and launch the CLI
+costra <account> [--no-proxy] [-- <cli args...>]
+                                      Start proxy (if needed) and launch the CLI
 costra add <account> [options]        Register an account
 costra remove <account>               Unregister an account (config dir is kept)
 costra list                           List configured accounts
 costra status                         Show ports and proxy state per account
 costra stop <account>                 Stop the account's background proxy
 costra proxy <account>                Run the proxy in the foreground (debugging)
+costra proxy open <account>           Open the account's pxpipe URL in the browser
 ```
+
+### Launch options
+
+| Option       | Description                                     |
+| ------------ | ----------------------------------------------- |
+| `--no-proxy` | Launch the CLI directly, without a pxpipe proxy |
 
 ### `add` options
 
