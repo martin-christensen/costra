@@ -1,7 +1,11 @@
-import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
+import {
+  pkgVersion,
+  maybeNotifyUpdate,
+  refreshUpdateCache,
+  updateNotice,
+} from "./version.js";
 import {
   CONFIG_PATH,
   loadConfig,
@@ -26,6 +30,7 @@ Usage:
   costra stop <account>                 Stop the account's background proxy
   costra proxy <account>                Run the account's proxy in the foreground
   costra proxy open <account>           Open the account's pxpipe URL in the browser
+  costra version                        Show version and check npm for a newer one
   costra help                           Show this help
 
 Options for launching an account:
@@ -42,15 +47,10 @@ Examples:
   costra add oai --provider openai
   costra work
   costra work -- --resume
-`;
 
-function pkgVersion() {
-  const here = path.dirname(fileURLToPath(import.meta.url));
-  const pkg = JSON.parse(
-    fs.readFileSync(path.join(here, "..", "package.json"), "utf8")
-  );
-  return pkg.version;
-}
+Costra checks npm for a newer version at most once a day (in the background)
+and prints a notice when one is found. Set COSTRA_NO_UPDATE_CHECK=1 to disable.
+`;
 
 function parseFlags(args, spec) {
   const flags = {};
@@ -193,6 +193,18 @@ async function cmdRun(name, rest) {
   launchCli(account, port, extraArgs);
 }
 
+async function cmdVersion() {
+  const current = pkgVersion();
+  console.log(`costra ${current}`);
+  try {
+    const latest = await refreshUpdateCache();
+    const notice = updateNotice(latest, current);
+    console.log(notice ?? `Up to date (latest on npm: ${latest})`);
+  } catch (err) {
+    console.log(`Could not check npm for a newer version: ${err.message}`);
+  }
+}
+
 async function cmdProxyOpen(args) {
   const name = args[0];
   if (!name) throw new Error("Usage: costra proxy open <account>");
@@ -214,11 +226,15 @@ export async function main(argv) {
     return;
   }
   if (["--version", "-v"].includes(argv[0])) {
+    // Script-friendly: print the bare version, no network.
     console.log(pkgVersion());
     return;
   }
   const [cmd, ...rest] = argv;
+  if (cmd !== "version") maybeNotifyUpdate(); // "version" does its own live check.
   switch (cmd) {
+    case "version":
+      return cmdVersion();
     case "add":
       return cmdAdd(rest);
     case "remove":
