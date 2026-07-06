@@ -1,11 +1,11 @@
-# costra
+# @martin-christensen/costra
 
 Run multiple **Claude Code** and **Codex** accounts side by side, each behind its own [pxpipe](https://www.npmjs.com/package/pxpipe-proxy) proxy to save costs — with automatic port allocation and isolated config directories.
 
 ## Install
 
 ```sh
-npm install -g costra
+npm install -g @martin-christensen/costra
 ```
 
 Requires Node 20+ and the CLI you want to run (`claude` and/or `codex`) on your `PATH`.
