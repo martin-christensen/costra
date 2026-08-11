@@ -7,6 +7,17 @@ import { ensureDir, statePath } from "./paths.js";
 export const CONFIG_PATH = statePath("config.json", {
   env: "COSTRA_CONFIG",
   legacy: ".costra.json",
+  // A config with no accounts is effectively empty: safe to overwrite from a
+  // legacy file that still has some. Unparseable => treat as non-empty so we
+  // never clobber a file we don't understand.
+  isEmpty: (raw) => {
+    try {
+      const accounts = JSON.parse(raw)?.accounts;
+      return !accounts || Object.keys(accounts).length === 0;
+    } catch {
+      return false;
+    }
+  },
 });
 
 const DEFAULTS = {

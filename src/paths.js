@@ -30,17 +30,42 @@ export function ensureDir(file) {
  * we fall through to the default `<configHome>/<name>` location we also do a
  * one-time, best-effort migration of the legacy `~/.<legacy>` dotfile so old
  * installs move themselves on the first run without ever losing data.
+ *
+ * `isEmpty(raw)` is an optional predicate that reports whether a file's
+ * contents are effectively empty/default. When given, a target that already
+ * exists but is empty/default is still overwritten from a non-empty legacy
+ * file — so a stray blank config left behind by an aborted run can't
+ * permanently strand real data in the legacy location.
  */
-export function statePath(name, { env, legacy } = {}) {
+export function statePath(name, { env, legacy, isEmpty } = {}) {
   if (env && process.env[env]) return process.env[env];
   const target = path.join(configHome(), name);
-  if (legacy) migrateLegacy(path.join(os.homedir(), legacy), target);
+  if (legacy) migrateLegacy(path.join(os.homedir(), legacy), target, isEmpty);
   return target;
 }
 
-function migrateLegacy(from, to) {
+/** Read a file and run the emptiness predicate, defaulting on any failure. */
+function readIsEmpty(file, isEmpty, onError) {
   try {
-    if (fs.existsSync(to) || !fs.existsSync(from)) return;
+    return isEmpty(fs.readFileSync(file, "utf8"));
+  } catch {
+    return onError;
+  }
+}
+
+function migrateLegacy(from, to, isEmpty) {
+  try {
+    if (!fs.existsSync(from)) return;
+    if (fs.existsSync(to)) {
+      // Target already present. Normally we leave it untouched. But if the
+      // caller can tell an empty/default target apart from a real one, adopt
+      // the legacy file when the target is empty and the legacy has data —
+      // conservatively, we never overwrite a target that already holds data.
+      if (!isEmpty) return;
+      const targetEmpty = readIsEmpty(to, isEmpty, false);
+      const legacyEmpty = readIsEmpty(from, isEmpty, true);
+      if (!targetEmpty || legacyEmpty) return;
+    }
     ensureDir(to);
     try {
       fs.renameSync(from, to);
