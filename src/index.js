@@ -15,6 +15,7 @@ import {
 import { PROVIDERS, getProvider } from "./providers.js";
 import { allocatePort, readAssignedPort, isPortInUse } from "./ports.js";
 import { ensureProxy, stopProxy, proxyEnv } from "./proxy.js";
+import { resolvePxpipeSpec, updatePxpipeNow } from "./pxpipe.js";
 import { launchCli } from "./launch.js";
 import { openInBrowser } from "./browser.js";
 
@@ -30,6 +31,7 @@ Usage:
   costra stop <account>                 Stop the account's background proxy
   costra proxy <account>                Run the account's proxy in the foreground
   costra proxy open <account>           Open the account's pxpipe URL in the browser
+  costra proxy update                   Check npm and update the pinned pxpipe-proxy
   costra version                        Show version and check npm for a newer one
   costra help                           Show this help
 
@@ -50,6 +52,10 @@ Examples:
 
 Costra checks npm for a newer version at most once a day (in the background)
 and prints a notice when one is found. Set COSTRA_NO_UPDATE_CHECK=1 to disable.
+
+Costra pins the pxpipe-proxy version it launches (kept in ~/.config/costra/)
+and, when a newer one is published, pauses to ask before starting the proxy.
+Force a specific version with COSTRA_PXPIPE_VERSION, or run "costra proxy update".
 `;
 
 function parseFlags(args, spec) {
@@ -161,8 +167,9 @@ async function cmdProxy(args) {
   if (await isPortInUse(port)) {
     throw new Error(`Something is already listening on port ${port}`);
   }
+  const spec = await resolvePxpipeSpec({ interactive: isInteractive() });
   console.log(`Starting pxpipe proxy for "${name}" on port ${port} (Ctrl-C to stop)`);
-  const child = spawn("npx", ["pxpipe-proxy"], {
+  const child = spawn("npx", [spec], {
     stdio: "inherit",
     env: proxyEnv(account, port),
   });
@@ -185,7 +192,8 @@ async function cmdRun(name, rest) {
     return;
   }
   const port = await allocatePort(cfg, account);
-  const { started } = await ensureProxy(account, port);
+  const spec = await resolvePxpipeSpec({ interactive: isInteractive() });
+  const { started } = await ensureProxy(account, port, { spec });
   const url = `http://127.0.0.1:${port}`;
   console.log(
     `${started ? "Started" : "Reusing"} pxpipe proxy for "${name}" at ${url}`
@@ -211,13 +219,32 @@ async function cmdProxyOpen(args) {
   const cfg = loadConfig();
   const account = resolveAccount(cfg, name);
   const port = await allocatePort(cfg, account);
-  const { started } = await ensureProxy(account, port);
+  const spec = await resolvePxpipeSpec({ interactive: isInteractive() });
+  const { started } = await ensureProxy(account, port, { spec });
   const url = `http://127.0.0.1:${port}`;
   if (started) {
     console.log(`Started pxpipe proxy for "${name}" on port ${port}`);
   }
   console.log(`Opening ${url}`);
   openInBrowser(url);
+}
+
+function isInteractive() {
+  return Boolean(process.stdin.isTTY && process.stderr.isTTY);
+}
+
+async function cmdProxyUpdate() {
+  console.log("Checking npm for the latest pxpipe-proxy…");
+  try {
+    const { from, to, changed } = await updatePxpipeNow();
+    if (changed) {
+      console.log(`pxpipe-proxy pinned to ${to}${from ? ` (was ${from})` : ""}`);
+    } else {
+      console.log(`pxpipe-proxy already on the latest version (${to})`);
+    }
+  } catch (err) {
+    throw new Error(`Could not check npm for pxpipe-proxy: ${err.message}`);
+  }
 }
 
 export async function main(argv) {
@@ -248,9 +275,9 @@ export async function main(argv) {
     case "stop":
       return cmdStop(rest);
     case "proxy":
-      return rest[0] === "open"
-        ? cmdProxyOpen(rest.slice(1))
-        : cmdProxy(rest);
+      if (rest[0] === "open") return cmdProxyOpen(rest.slice(1));
+      if (rest[0] === "update") return cmdProxyUpdate();
+      return cmdProxy(rest);
     default:
       return cmdRun(cmd, rest);
   }

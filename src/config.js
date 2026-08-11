@@ -2,9 +2,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { getProvider } from "./providers.js";
+import { ensureDir, statePath } from "./paths.js";
 
-export const CONFIG_PATH =
-  process.env.COSTRA_CONFIG || path.join(os.homedir(), ".costra.json");
+export const CONFIG_PATH = statePath("config.json", {
+  env: "COSTRA_CONFIG",
+  legacy: ".costra.json",
+});
 
 const DEFAULTS = {
   portRange: [47800, 47899],
@@ -29,6 +32,7 @@ export function loadConfig() {
 }
 
 export function saveConfig(cfg) {
+  ensureDir(CONFIG_PATH);
   fs.writeFileSync(CONFIG_PATH, `${JSON.stringify(cfg, null, 2)}\n`);
 }
 
