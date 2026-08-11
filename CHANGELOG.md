@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/martin-christensen/costra/compare/v1.2.0...v1.2.1) (2026-08-11)
+
+
+### Bug Fixes
+
+* adopt legacy config when the new-location file is empty ([#11](https://github.com/martin-christensen/costra/issues/11)) ([6a3b7fe](https://github.com/martin-christensen/costra/commit/6a3b7fe73dfa966488f27e699c09c1702810f064))
+
 ## [1.2.0](https://github.com/martin-christensen/costra/compare/v1.1.2...v1.2.0) (2026-08-11)
 
 
