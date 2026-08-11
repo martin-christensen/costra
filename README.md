@@ -79,6 +79,7 @@ costra status                         Show ports and proxy state per account
 costra stop <account>                 Stop the account's background proxy
 costra proxy <account>                Run the proxy in the foreground (debugging)
 costra proxy open <account>           Open the account's pxpipe URL in the browser
+costra proxy update                   Check npm and update the pinned pxpipe-proxy
 costra version                        Show version and check npm for a newer one
 ```
 
@@ -109,13 +110,38 @@ found, a one-line notice is printed to stderr on the next run:
 costra: update available 1.0.0 → 1.1.0 — run: npm install -g @martin-christensen/costra
 ```
 
-The result is cached in `~/.costra-update.json` (override with the
+The result is cached in `~/.config/costra/update.json` (override with the
 `COSTRA_UPDATE_CACHE` env var). Set `COSTRA_NO_UPDATE_CHECK=1` to disable
 update checks entirely.
 
+### Keeping pxpipe-proxy in sync
+
+Costra launches the proxy with `npx pxpipe-proxy`. Because bare `npx <pkg>`
+reuses whatever it first cached and never re-checks the registry, an account
+could silently freeze on a stale pxpipe-proxy. To avoid that, costra **pins an
+explicit version** (`npx pxpipe-proxy@<pinned>`) and keeps it in sync:
+
+- The pin is stored in `~/.config/costra/pxpipe.json` (override with
+  `COSTRA_PXPIPE_CACHE`) — **not** hard-coded in costra, so it works with any
+  pxpipe-proxy version and never needs a costra release to upgrade.
+- Costra checks npm at most once a day. When a newer pxpipe-proxy is published,
+  an **interactive launch pauses and asks before starting the proxy**:
+
+  ```
+  costra: pxpipe-proxy 0.13.0 → 0.14.0 is available. Update now? [Y/n]
+  ```
+
+  Answering yes re-pins to the new version; answering no keeps the current pin
+  and won't ask again until an even newer version ships. Non-interactive runs
+  never prompt — they print a one-line notice and keep the current pin.
+- `costra proxy update` checks and re-pins on demand.
+- `COSTRA_PXPIPE_VERSION=<x.y.z>` forces a specific version and skips all checks.
+- Offline never blocks a launch: costra proceeds on the current pin.
+
 ## 🔧 Configuration
 
-`~/.costra.json` (override the location with the `COSTRA_CONFIG` env var):
+`~/.config/costra/config.json` (override the location with the `COSTRA_CONFIG`
+env var):
 
 ```json
 {
@@ -126,6 +152,21 @@ update checks entirely.
   }
 }
 ```
+
+costra keeps all of its own state together under `~/.config/costra/`
+(honouring `XDG_CONFIG_HOME`, or set `COSTRA_HOME` to relocate the whole dir):
+
+| File                          | Purpose                              |
+| ----------------------------- | ------------------------------------ |
+| `config.json`                 | accounts and port range              |
+| `update.json`                 | cached costra self-update check      |
+| `pxpipe.json`                 | pinned pxpipe-proxy version          |
+
+Upgrading from an older costra? The legacy `~/.costra.json`,
+`~/.costra-update.json`, and `~/.costra-pxpipe.json` dotfiles are **moved into
+`~/.config/costra/` automatically on the first run** — nothing to do by hand.
+(Per-account CLI directories such as `~/.config-claude-<name>` are left in
+place, since they hold each CLI's own auth and settings.)
 
 ## 🤝 Contributing
 

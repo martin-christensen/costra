@@ -1,12 +1,13 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { ensureDir, statePath } from "./paths.js";
 
-export const UPDATE_CACHE_PATH =
-  process.env.COSTRA_UPDATE_CACHE ||
-  path.join(os.homedir(), ".costra-update.json");
+export const UPDATE_CACHE_PATH = statePath("update.json", {
+  env: "COSTRA_UPDATE_CACHE",
+  legacy: ".costra-update.json",
+});
 
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // Check npm at most once a day.
 const FETCH_TIMEOUT_MS = 5000;
@@ -58,15 +59,20 @@ export function readUpdateCache() {
 }
 
 export function writeUpdateCache(latest) {
+  ensureDir(UPDATE_CACHE_PATH);
   fs.writeFileSync(
     UPDATE_CACHE_PATH,
     `${JSON.stringify({ latest, checkedAt: Date.now() }, null, 2)}\n`
   );
 }
 
-export async function fetchLatestVersion() {
-  const name = pkgName().replace("/", "%2f"); // Scoped: @scope%2fname
-  const res = await fetch(`https://registry.npmjs.org/${name}/latest`, {
+/**
+ * Fetch the version behind a package's `latest` dist-tag from the npm registry.
+ * Reusable for any package name (e.g. costra itself or pxpipe-proxy).
+ */
+export async function fetchNpmLatest(name) {
+  const encoded = name.replace("/", "%2f"); // Scoped: @scope%2fname
+  const res = await fetch(`https://registry.npmjs.org/${encoded}/latest`, {
     headers: { accept: "application/json" },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
@@ -76,6 +82,10 @@ export async function fetchLatestVersion() {
     throw new Error("npm registry response had no version");
   }
   return version;
+}
+
+export async function fetchLatestVersion() {
+  return fetchNpmLatest(pkgName());
 }
 
 /** Fetch the latest published version and record it in the cache. */

@@ -20,7 +20,11 @@ export function proxyEnv(account, port) {
  * Starts one in the background (detached, logging to pxpipe.log in the
  * account config dir) when nothing is listening yet.
  */
-export async function ensureProxy(account, port, { waitMs = 15000 } = {}) {
+export async function ensureProxy(
+  account,
+  port,
+  { waitMs = 15000, spec = "pxpipe-proxy" } = {}
+) {
   if (await isPortInUse(port)) {
     return { started: false, port };
   }
@@ -28,7 +32,7 @@ export async function ensureProxy(account, port, { waitMs = 15000 } = {}) {
   fs.mkdirSync(account.configDir, { recursive: true });
   const logPath = path.join(account.configDir, "pxpipe.log");
   const log = fs.openSync(logPath, "a");
-  const child = spawn("npx", ["pxpipe-proxy"], {
+  const child = spawn("npx", [spec], {
     detached: true,
     stdio: ["ignore", log, log],
     env: proxyEnv(account, port),
